@@ -19,12 +19,29 @@ u16 wifi_timeout=10*60;
 int WaitforIPD();
 
 
-void wifi_HWReset(){
-	//reset module
-	DDRD|=(1<<PD3);
-	PORTD&=~(1<<PD3);
-	WaitVsync(1);
-	PORTD|=(1<<PD3);
+const u16 bauds[] PROGMEM = {370,246,184,92,60,44,30};
+int initWifi(){
+    s8 i = 0;
+    int result;
+    UCSR0A=(1<<U2X0); // double speed mode
+    UCSR0C=(1<<UCSZ01)+(1<<UCSZ00)+(0<<USBS0); //8-bit frame, no parity, 1 stop bit
+    UCSR0B=(1<<RXEN0)+(1<<TXEN0); //Enable UART TX & RX
+    do {
+        UBRR0L=pgm_read_byte(((u8*) &(bauds[i % 7])));
+        UBRR0H=pgm_read_byte(((u8*) &(bauds[i % 7]))+1);
+        WaitVsync(1);
+        result = wifiSendCommandAndWait(PSTR("AT\r\n"),PSTR("OK\r\n"), 30); 
+        i++;
+    } while ((result != WIFI_OK) && (i < 14));
+    if (result == WIFI_OK) {
+        result = wifiSendCommandAndWait(PSTR("AT+UART_CUR=14400,8,1,0,0\r\n"),PSTR("OK\r\n"), 2*60); 
+        if (result == WIFI_OK) {
+            UBRR0L=pgm_read_byte(((u8*) &(bauds[1])));
+            UBRR0H=pgm_read_byte(((u8*) &(bauds[1]))+1); 
+            WaitVsync(1);
+        }
+    }
+    return result;
 }
 
 void wifi_Echo(bool echoOn){
@@ -107,6 +124,45 @@ int wifi_WaitForStringP(const char* str, char* rxbuf){
 			return WIFI_TIMEOUT;
 		}
 	}
+
+}
+
+int wifiWaitForStringP(const char* str, char* rxbuf, u16 wifi_timeout){
+    u8 c;
+    s16 r;
+    const char* p=str;
+    char* buf=rxbuf;
+    ClearVsyncCounter();
+
+    while(1){
+
+        r=UartReadChar();
+        if(r!=-1){
+
+            c=r&(0xff);
+
+            if(echo) putchar(c);
+
+            if(buf!=NULL){
+                *buf=c;
+                buf++;
+            }
+
+            if(c==pgm_read_byte(p)){
+                p++;
+                if(pgm_read_byte(p)==0){
+                    return WIFI_OK;
+                }
+            }else{
+                //reset string compare
+                p=str;
+            }
+        }
+
+        if(GetVsyncCounter()>wifi_timeout){
+            return WIFI_TIMEOUT;
+        }
+    }
 
 }
 
@@ -229,6 +285,22 @@ int SendCommandAndWait(const char* strToSend, const char* strToWait){
 	}
 
 	return WIFI_OK;
+}
+
+int wifiSendCommandAndWait(const char* strToSend, const char* strToWait, u16 wifi_timeout){
+    wifi_SendString_P(strToSend);
+    if(wifiWaitForStringP(strToWait, NULL, wifi_timeout)==WIFI_TIMEOUT){
+
+        if(connOpen){
+            wifi_SendString_P(PSTR("AT+CIPCLOSE=0\r\n"));
+            wifi_WaitForStringP(PSTR("OK\r\n"), NULL);
+            connOpen=false;
+        }
+
+        return WIFI_TIMEOUT;
+    }
+
+    return WIFI_OK;
 }
 
 

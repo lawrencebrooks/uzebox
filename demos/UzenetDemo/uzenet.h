@@ -29,11 +29,13 @@ typedef struct {
 } HttpResponse;
 
 
-extern void wifi_HWReset();
+extern int initWifi();
 extern int wifi_SendString_P(const char* str);
 extern int wifi_SendString(char* str);
 extern int wifi_WaitForStringP(const char* str, char* rxbuf);
+extern int wifiWaitForStringP(const char* str, char* rxbuf, u16 wifi_timeout);
 extern int SendCommandAndWait(const char* strToSend, const char* strToWait);
+extern int wifiSendCommandAndWait(const char* strToSend, const char* strToWait, u16 wifi_timeout);
 extern int SendDataAndWait(const char* strToSend, const char* strToWait);
 extern int WaitForString_P(const char* strToWait);
 extern int HttpGet(char* host,u16 port,char* url, HttpResponse* response);

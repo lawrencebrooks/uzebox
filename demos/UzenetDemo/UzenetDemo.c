@@ -65,6 +65,7 @@ void timeout(){
 int main(){
 	u8 c=0;
 	char rxbuf[256];
+    char mac[9];
 	resp.content=rxbuf;
 
 
@@ -77,16 +78,16 @@ int main(){
 	SetTileTable(font6x8);
 	console_init(CONS_OUTPUT_NON_ALPHA);
 
-	wifi_Echo(false);
+	wifi_Echo(true);
 
 	printf_P(PSTR("             *** Uzenet Console 0.1 ***\n\n"));
 	printf_P(PSTR("For console commands type: help\n\n"));
 
 
-	printf_P(PSTR("Initializing UART...\r\n"));
+    //printf_P(PSTR("Initializing UART...\r\n"));
 
 	//initialize UART0 
-	UBRR0H=0;	
+	// UBRR0H=0;	
 
 	//http://wormfood.net/avrbaudcalc.php
 	//This is for single speed mode. Double the
@@ -105,145 +106,19 @@ int main(){
 	//UBRR0L=185;	//9600 bauds	960 bytes/s		16 bytes/field
 	//UBRR0L=92;	//19200 bauds	1920 bytes/s	32 bytes/field
 	//UBRR0L=46;	//38400 bauds	3840 bytes/s	64 bytes/field
-	UBRR0L=60;		//57600 bauds	5760 bytes/s	96 bytes/field
-	//UBRR0L=30;		//115200 bauds	
+	//UBRR0L=60;		//57600 bauds	5760 bytes/s	96 bytes/field (Double Speed)
+	//UBRR0L=30;		//115200 bauds (Double Speed)
+    //UBRR0L=60;
 
-
-	UCSR0A=(1<<U2X0); // double speed mode
-	UCSR0C=(1<<UCSZ01)+(1<<UCSZ00)+(0<<USBS0); //8-bit frame, no parity, 1 stop bit
-	UCSR0B=(1<<RXEN0)+(1<<TXEN0); //Enable UART TX & RX
-
-
-	printf_P(PSTR("Resetting module...\r\n"));
-	wifi_HWReset();
-
-	if(wifi_WaitForStringP(PSTR("ready\r\n"),NULL)!=WIFI_OK)timeout();
-
-	SendCommandAndWait(PSTR("ATE0\r\n"),PSTR("OK\r\n"));
-	SendCommandAndWait(PSTR("AT+CWMODE_CUR=1\r\n"),PSTR("OK\r\n"));
-
-	printf_P(PSTR("Uzenet initialized succesfully.\n"));
-	SendCommandAndWait(PSTR("AT+GMR\r\n"),PSTR("OK\r\n"));
-
-	printf_P(PSTR("Waiting for connection to router...\r\n"));
-
-	if(WaitForString_P(PSTR("WIFI GOT IP\r\n"))!=WIFI_OK) timeout();
-	printf_P(PSTR("Connected to router.\n"),resp.content);
-
-	//wifi_SendString_P(PSTR("AT+CIFSR\r\n"));
-
-	SendCommandAndWait(PSTR("AT+CIPMUX=1\r\n"),PSTR("OK\r\n"));
-	printf_P(PSTR("\nConnecting to uzebox.org...\n"));
-
-	time_t timestamp;
-	time_t now;
-	struct tm *uzetime;
-	char* ds;
-	u16 cnt=0;
-
-	HttpGet("uzebox.org",80,"/uzenet/time.php",&resp);
-	timestamp=atol(resp.content)-UNIX_OFFSET;
-	set_system_time(timestamp);
-	set_zone(-4 * ONE_HOUR);
-
-//	uzetime=localtime(&timestamp);
-//	ds=isotime(uzetime);
-//	printf_P(PSTR("Initial Uzenet server time: %s\n"),ds);
-
-	console_clear();
-	wifi_Echo(true);
-
-	while(1){
-		HttpGet("uzebox.org",80,"/uzenet/time.php",&resp);
-		timestamp=atol(resp.content)-UNIX_OFFSET;
-		uzetime=localtime(&timestamp);
-		ds=isotime(uzetime);
-
-		int localDiff=time(NULL)-timestamp;
-
-		printf_P(PSTR("Uzenet: %s\n"),ds);
-
-		while(1){
-
-			now=time(NULL);
-			uzetime=localtime(&now);
-			ds=isotime(uzetime);
-
-			if(localDiff<0){
-				printf_P(PSTR("Local : %s, slower by: %i\r"),ds,localDiff);
-			}else{
-				printf_P(PSTR("Local : %s, faster by: %i\r"),ds,localDiff);
-			}
-
-			WaitVsync(60);
-
-			cnt++;
-			if(cnt>=(30)){
-				cnt=0;
-				printf_P(PSTR("\n"),ds);
-				break;
-			}
-
-
-		}
-	}
-
-
-
-//	SendCommandAndWait(PSTR("AT+CIPSTART=0,\"TCP\",\"uzebox.org\",80\r\n"),PSTR("OK\r\n"));
-//	SendCommandAndWait(PSTR("AT+CIPSENDEX=0,256\r\n\f"),PSTR(">"));
-//	SendCommandAndWait(PSTR("GET /uzenet/time.php HTTP/1.0\r\nHost: uzebox.org:80\r\n\r\n\f"),PSTR("SEND OK\r\n"));
-
-
-//	printf_P(PSTR("Waiting for connection to router...\r\n"));
-//	SendCommandAndWait(PSTR("AT+CWJAP=\"Belogic2G\",\"sie6bhUjae7nnnywikH72M9ejhsgemslle84Dcs\"\r\n"),PSTR("OK\r\n"));
-
-/*
-	//SendCommandAndWait(PSTR("AT+UART_DEF=57600,8,1,0,0\r\n"),PSTR("OK\r\n"));
+	printf_P(PSTR("Initialize WIFI module...\r\n"));
 	
+   if(initWifi()!=WIFI_OK)timeout();
 
-	
-	printf_P(PSTR("Waiting for connection to router...\r\n"));
-	for(u8 i=0;i<10;i++){
-		wifi_SendStringP(PSTR("AT+CIFSR\r\n"));
-		if(wifi_WaitForStringP(PSTR("OK\r\n"),rxbuf)!=WIFI_OK)timeout();
-		if(!strstr_P(rxbuf,PSTR("0.0.0.0"))){
-			break;
-		}else{
-			WaitVsync(60);
-		}
-	}
+	//SendCommandAndWait(PSTR("ATE0\r\n"),PSTR("OK\r\n"));
 
-	printf_P(PSTR("Get access point...\r\n"));
-	SendCommandAndWait(PSTR("AT+CWJAP?\r\n"),PSTR("OK\r\n"));
+    printf_P(PSTR("Firmware Version....\n"));
+    SendCommandAndWait(PSTR("AT+GMR\r\n"),PSTR("OK\r\n"));
 
-	printf_P(PSTR("Set multiple connections mode...\r\n"));
-	SendCommandAndWait(PSTR("AT+CIPMUX=1\r\n"),PSTR("OK\r\n"));
-	
-	printf_P(PSTR("Connect to web server...\r\n"));
-	//SendAndWait(PSTR("AT+CIPSTART=0,\"TCP\",\"belogic.com\",80\r\n"),PSTR("OK\r\nLinked\r\n"));
-	//SendAndWait(PSTR("AT+CIPSTART=0,\"TCP\",\"216.189.148.140\",50697\r\n"),PSTR("OK\r\nLinked\r\n"));
-	SendCommandAndWait(PSTR("AT+CIPSTART=0,\"TCP\",\"uzebox.net\",50697\r\n"),PSTR("OK\r\n"));
-	connOpen=true;
-
-	printf_P(PSTR("Send chat login request...\r\n"));
-	//SendAndWait(PSTR("AT+CIPSEND=0,49\r\nGET /hello.txt HTTP/1.0\r\nHost: belogic.com:80\r\n\r\n"),PSTR("SEND OK\r\n"));
-	
-	//SendDataAndWait(PSTR("AT+CIPSEND=0,7\r\nUZECHAT"),PSTR("ENTER USER NAME:\r\nOK\r\n"));
-	SendDataAndWait(PSTR("AT+CIPSEND=0,7\r\nUZECHAT"),PSTR("ENTER USER NAME:"));
-
-	printf_P(PSTR("Send username...\r\n"));
-	
-	SendDataAndWait(PSTR("AT+CIPSEND=0,10\r\nMASTER_UZE"),PSTR("OK\0\r\nOK\r\n"));
-	
-	//wifi_WaitForStringP(PSTR, NULL);
-	
-	SendDataAndWait(PSTR("AT+CIPSEND=0,16\r\nOk, no problems!"),PSTR("OK\r\n"));
-	
-	//wifi_SendStringP(PSTR("MASTER_UZE\r\n"));
-
-	//SendAndWait(PSTR("AT+CIPCLOSE=0\r\n"),PSTR("OK\r\n"));
-*/
 	u16 joy;
 	while(true){
 
@@ -258,23 +133,75 @@ int main(){
 			switch(joy){
 				case BTN_A:
 					//SendDataAndWait(PSTR("AT+CIPSEND=0,16\r\nOk, no problems!"),PSTR("OK\r\n"));
+                    printf_P(PSTR("Set SoftAP mode...\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWMODE_CUR=2\r\n"),PSTR("OK\r\n"));
+
+                    printf_P(PSTR("Disable DHCP...\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWDHCP_CUR=0,0\r\n"),PSTR("OK\r\n"));
+
+                    printf_P(PSTR("Set SopftAP IP address\r\n"));
+                    SendCommandAndWait(PSTR("AT+CIPAP_CUR=\"192.168.4.1\"\r\n"), PSTR("OK\r\n"));
+
+                    printf_P(PSTR("Get SoftAP MAC address...\r\n"));
+                    wifi_SendString_P(PSTR("AT+CIPAPMAC_CUR?\r\n"));
+                    if (wifi_WaitForStringP(PSTR("OK\r\n"), rxbuf) != WIFI_TIMEOUT) {
+                        mac[0] = 'T';
+                        mac[1] = 'F';
+                        u8 idx = 2;
+                        for (u8 i = 43; i <= 49; i += 3) {
+                           mac[idx++] = rxbuf[i]; 
+                           mac[idx++] = rxbuf[i+1];
+                        }
+                        mac[8] = 0;
+                        printf("%s\r\n", mac);
+                    }
+
+                    printf_P(PSTR("Setup local access point...\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWSAP_CUR=\"ESP8266SOFTAP\",\"test12345\",5,3,1\r\n"),PSTR("OK\r\n"));
+
+                    printf_P(PSTR("Activate UDP Passthrough mode\r\n"));
+                    SendCommandAndWait(PSTR("AT+CIPSTART=\"UDP\",\"192.168.4.2\",1001,2233,0\r\n"), PSTR("OK\r\n"));
+
+                    SendCommandAndWait(PSTR("AT+CIPMODE=1\r\n"),PSTR("OK\r\n"));
+                    wifi_SendString_P(PSTR("AT+CIPSEND\r\n"));
 				break;
 				
 				case BTN_B:
-					SendDataAndWait(PSTR("AT+CIPSEND=0,13\r\nAnybody here?"),PSTR("OK\r\n"));
+                    wifi_SendString_P(PSTR("Test Packet"));
+					//SendDataAndWait(PSTR("AT+CIPSEND=0,13\r\nAnybody here?"),PSTR("OK\r\n"));
 				break;
 				
 				case BTN_X:
-					//SendDataAndWait(PSTR("AT+CIPSEND=0,13\r\nUzebox rules!"),PSTR("OK\r\n"));
+                    printf_P(PSTR("Set Station mode...\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWMODE_CUR=1\r\n"),PSTR("OK\r\n"));
+                    
+                    printf_P(PSTR("Disable DHCP...\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWDHCP_CUR=0,0\r\n"),PSTR("OK\r\n"));
+                    
+                    printf_P(PSTR("List access points...\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWLAPOPT=1,1\r\n"),PSTR("OK\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWLAP\r\n"),PSTR("OK\r\n"));
+                    
+                    printf_P(PSTR("Connect to access point...\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWJAP_CUR=\"ESP8266SOFTAP\", \"test12345\"\r\n"),PSTR("OK\r\n"));
+                    
+                    printf_P(PSTR("Set station IP address"));
+                    SendCommandAndWait(PSTR("AT+CIPSTA_CUR=\"192.168.4.2\"\r\n"), PSTR("OK\r\n"));
+                    
+                    printf_P(PSTR("Activate UDP Passthrough mode\r\n"));
+                    SendCommandAndWait(PSTR("AT+CIPSTART=\"UDP\",\"192.168.4.1\",2233,1001\r\n"),PSTR("OK\r\n"));
+                    SendCommandAndWait(PSTR("AT+CIPMODE=1\r\n"),PSTR("OK\r\n"));
+                    wifi_SendString_P(PSTR("AT+CIPSEND\r\n"));
 				break;
 				
 				case BTN_Y:
 					//SendDataAndWait(PSTR("AT+CIPSEND=0,3\r\nYo!"),PSTR("OK\r\n"));
-
-	//debug_char('*');
-	//debug_hex(uart_tx_tail);
-	//debug_hex(uart_tx_head);
-	//debug_char(0xa);
+                    wifi_SendString_P(PSTR("+++"));
+                    u8 counter = 0;
+                    while(counter++ < 5) WaitUs(65535);
+                    counter = 0;
+                    SendCommandAndWait(PSTR("AT+CIPMODE=0\r\n"),PSTR("OK\r\n"));
+                    SendCommandAndWait(PSTR("AT+CIPCLOSE\r\n"),PSTR("OK\r\n"));
 				break;
 				
 			}
