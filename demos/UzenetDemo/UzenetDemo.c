@@ -176,14 +176,13 @@ int main(){
                     SendCommandAndWait(PSTR("AT+CWMODE_CUR=1\r\n"),PSTR("OK\r\n"));
                     
                     printf_P(PSTR("Disable DHCP...\r\n"));
-                    SendCommandAndWait(PSTR("AT+CWDHCP_CUR=0,0\r\n"),PSTR("OK\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWDHCP_CUR=1,0\r\n"),PSTR("OK\r\n"));
                     
                     printf_P(PSTR("List access points...\r\n"));
-                    SendCommandAndWait(PSTR("AT+CWLAPOPT=1,1\r\n"),PSTR("OK\r\n"));
                     SendCommandAndWait(PSTR("AT+CWLAP\r\n"),PSTR("OK\r\n"));
                     
                     printf_P(PSTR("Connect to access point...\r\n"));
-                    SendCommandAndWait(PSTR("AT+CWJAP_CUR=\"ESP8266SOFTAP\", \"test12345\"\r\n"),PSTR("OK\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWJAP_CUR=\"ESP8266SOFTAP\",\"test12345\"\r\n"),PSTR("OK\r\n"));
                     
                     printf_P(PSTR("Set station IP address"));
                     SendCommandAndWait(PSTR("AT+CIPSTA_CUR=\"192.168.4.2\"\r\n"), PSTR("OK\r\n"));
