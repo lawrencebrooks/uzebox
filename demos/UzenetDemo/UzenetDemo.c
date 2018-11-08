@@ -62,6 +62,15 @@ void timeout(){
 		}
 	}
 }
+
+void wifiHWReset(){
+    //reset module
+    DDRD|=(1<<PD3);
+    PORTD&=~(1<<PD3);
+    WaitVsync(1);
+    PORTD|=(1<<PD3);
+}
+
 int main(){
 	u8 c=0;
 	char rxbuf[256];
@@ -110,6 +119,12 @@ int main(){
 	//UBRR0L=30;		//115200 bauds (Double Speed)
     //UBRR0L=60;
 
+    printf_P(PSTR("Resetting module...\r\n"));
+    wifiHWReset();
+
+    u8 counter = 0;
+    while(counter++ <= 61) WaitVsync(1);
+
 	printf_P(PSTR("Initialize WIFI module...\r\n"));
 	
    if(initWifi()!=WIFI_OK)timeout();
@@ -136,8 +151,8 @@ int main(){
                     printf_P(PSTR("Set SoftAP mode...\r\n"));
                     SendCommandAndWait(PSTR("AT+CWMODE_CUR=2\r\n"),PSTR("OK\r\n"));
 
-                    printf_P(PSTR("Disable DHCP...\r\n"));
-                    SendCommandAndWait(PSTR("AT+CWDHCP_CUR=0,0\r\n"),PSTR("OK\r\n"));
+                    //printf_P(PSTR("Disable DHCP...\r\n"));
+                    //SendCommandAndWait(PSTR("AT+CWDHCP_CUR=0,0\r\n"),PSTR("OK\r\n"));
 
                     printf_P(PSTR("Set SopftAP IP address\r\n"));
                     SendCommandAndWait(PSTR("AT+CIPAP_CUR=\"192.168.4.1\"\r\n"), PSTR("OK\r\n"));
@@ -157,7 +172,7 @@ int main(){
                     }
 
                     printf_P(PSTR("Setup local access point...\r\n"));
-                    SendCommandAndWait(PSTR("AT+CWSAP_CUR=\"ESP8266SOFTAP\",\"test12345\",5,3,1\r\n"),PSTR("OK\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWSAP_CUR=\"TFB9EEC2\",\"test12345\",5,3,1\r\n"),PSTR("OK\r\n"));
 
                     printf_P(PSTR("Activate UDP Passthrough mode\r\n"));
                     SendCommandAndWait(PSTR("AT+CIPSTART=\"UDP\",\"192.168.4.2\",1001,2233,0\r\n"), PSTR("OK\r\n"));
@@ -167,7 +182,7 @@ int main(){
 				break;
 				
 				case BTN_B:
-                    wifi_SendString_P(PSTR("Test Packet"));
+                    wifi_SendString_P(PSTR("abcdefghijklmnopqrstuvwxyzzz"));
 					//SendDataAndWait(PSTR("AT+CIPSEND=0,13\r\nAnybody here?"),PSTR("OK\r\n"));
 				break;
 				
@@ -175,14 +190,11 @@ int main(){
                     printf_P(PSTR("Set Station mode...\r\n"));
                     SendCommandAndWait(PSTR("AT+CWMODE_CUR=1\r\n"),PSTR("OK\r\n"));
                     
-                    printf_P(PSTR("Disable DHCP...\r\n"));
-                    SendCommandAndWait(PSTR("AT+CWDHCP_CUR=1,0\r\n"),PSTR("OK\r\n"));
-                    
-                    printf_P(PSTR("List access points...\r\n"));
-                    SendCommandAndWait(PSTR("AT+CWLAP\r\n"),PSTR("OK\r\n"));
+                    //printf_P(PSTR("Disable DHCP...\r\n"));
+                    //SendCommandAndWait(PSTR("AT+CWDHCP_CUR=1,0\r\n"),PSTR("OK\r\n"));
                     
                     printf_P(PSTR("Connect to access point...\r\n"));
-                    SendCommandAndWait(PSTR("AT+CWJAP_CUR=\"ESP8266SOFTAP\",\"test12345\"\r\n"),PSTR("OK\r\n"));
+                    SendCommandAndWait(PSTR("AT+CWJAP_CUR=\"TFB9EEC2\",\"test12345\"\r\n"),PSTR("OK\r\n"));
                     
                     printf_P(PSTR("Set station IP address"));
                     SendCommandAndWait(PSTR("AT+CIPSTA_CUR=\"192.168.4.2\"\r\n"), PSTR("OK\r\n"));
